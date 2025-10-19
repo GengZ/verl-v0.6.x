@@ -226,6 +226,9 @@ class ImageResizeTool(BaseTool):
         return instance_id, ToolResponse()
 
     async def execute(self, instance_id: str, parameters: dict[str, Any], **kwargs) -> tuple[ToolResponse, float, dict]:
+        instance_data = self._instance_dict[instance_id]
+        images = instance_data["image"]
+
         timestamp = parameters.get("timestamp")
 
         if not timestamp or not isinstance(timestamp, int):
@@ -241,9 +244,6 @@ class ImageResizeTool(BaseTool):
                 -0.05,
                 {"success": False},
             )
-
-        instance_data = self._instance_dict[instance_id]
-        images = instance_data["image"]
 
         try:
             selected_image = images[timestamp]
