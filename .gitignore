@@ -1,3 +1,4 @@
+tensorboard_log/
 
 **/*.pt
 **/checkpoints

@@ -1,0 +1,19 @@
+tools:
+  - class_name: "verl.tools.single_image_resize_tool.ImageResizeTool"
+    config:
+      num_workers: 256
+      rate_limit: 256
+      timeout: 60
+      type: native
+    tool_schema:
+      type: "function"
+      function:
+        name: "image_resize_tool"
+        description: "Enlarge specific video frame by resizing it based on the timestamp of the frame."
+        parameters:
+          type: "object"  
+          properties:
+            timestamp:
+              type: "integer"
+              description: "Timestamp of the frames to scale up."
+          required: ["timestamp"]
