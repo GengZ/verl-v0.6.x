@@ -300,11 +300,12 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
     acc_reward = 0.5 * em_reward + 1.5 * f1_reward
 
     # Penalize excessively long answers (potential judge hacking)
-    if len(answer_text) >= 1000:
+    if len(answer_text) >= 200:
         acc_reward = 0.0
         is_format_error = True
     else:
-        acc_reward = 1.0
+        # acc_reward = 1.0
+        pass
 
     # 5. Check tool usage - look for tool_call/tool_response patterns instead of vision tokens
     has_tool_usage = bool(
