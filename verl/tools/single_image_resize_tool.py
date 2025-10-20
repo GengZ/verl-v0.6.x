@@ -231,7 +231,11 @@ class ImageResizeTool(BaseTool):
 
         timestamp = parameters.get("timestamp")
 
-        if not timestamp or not isinstance(timestamp, int):
+        # with open('/workspace/log/tool.log', 'a') as f:
+        #     f.write(f'timestamp: {timestamp}\n')
+        #     f.write(f'images: {len(images)}\n')
+
+        if timestamp is None or not isinstance(timestamp, int):
             return (
                 ToolResponse(text="Error: timestamp parameter is missing or not an integer."),
                 -0.05,
@@ -253,9 +257,9 @@ class ImageResizeTool(BaseTool):
 
         response_text = f"Selected image at timestamp {timestamp}."
 
-        with open('/workspace/log/tool.log', 'a') as f:
-            f.write(f'response_text: {response_text}\n')
-            f.write(f'selected_image: {len(selected_image)} {type(selected_image)}\n')
+        # with open('/workspace/log/tool.log', 'a') as f:
+        #     f.write(f'response_text: {response_text}\n')
+        #     f.write(f'selected_image: {type(selected_image)}\n')
 
         return (
             ToolResponse(
