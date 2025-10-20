@@ -238,7 +238,7 @@ class ImageResizeTool(BaseTool):
                 {"success": False},
             )
 
-        if not timestamp < 0 or timestamp >= len(images):
+        if timestamp < 0 or timestamp >= len(images):
             return (
                 ToolResponse(text="Error: timestamp is out of range."),
                 -0.05,
