@@ -281,7 +281,8 @@ class ToolAgentLoop(AgentLoopBase):
                     )
                 content = []
                 if tool_response.image:
-                    content.append({"type": "image"})
+                    # content.append({"type": "image"})
+                    content.extend([{"type": "image"} for _ in tool_response.image])
                 if tool_response.video:
                     content.append({"type": "video"})
                 if tool_response.text:
