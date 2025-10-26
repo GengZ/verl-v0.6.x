@@ -269,9 +269,9 @@ class ImageResizeTool(BaseTool):
 
         response_text = f"Selected images at frame indices {timestamps}."
 
-        with open('/workspace/log/tool.log', 'a') as f:
-            f.write(f'response_text: {response_text}\n')
-            f.write(f'selected_images: {len(selected_images)} {type(selected_images[0])}\n')
+        # with open('/workspace/log/tool.log', 'a') as f:
+        #     f.write(f'response_text: {response_text}\n')
+        #     f.write(f'selected_images: {len(selected_images)} {type(selected_images[0])}\n')
 
         return (
             ToolResponse(
