@@ -21,6 +21,7 @@ from enum import Enum
 from math import ceil, floor
 from typing import Any, Callable, Optional, TypeVar
 from uuid import uuid4
+from PIL import Image
 
 import ray
 import ray.actor
@@ -34,6 +35,13 @@ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
 T = TypeVar("T")
 
+def to_rgb(pil_image: Image.Image) -> Image.Image:
+      if pil_image.mode == 'RGBA':
+          white_background = Image.new("RGB", pil_image.size, (255, 255, 255))
+          white_background.paste(pil_image, mask=pil_image.split()[3])  # Use alpha channel as mask
+          return white_background
+      else:
+          return pil_image.convert("RGB")
 
 # Adapted from verl/tools/sandbox_fusion_tools.py
 class PoolMode(Enum):
@@ -176,7 +184,7 @@ class ImageResizeTool(BaseTool):
             rate_limit=self.rate_limit,
             mode=PoolMode.ThreadMode,
         )
-        logger.info(f"Initialized ImageZoomInTool with config: {config}")
+        logger.info(f"Initialized ImageResizeTool with config: {config}")
 
     def get_openai_tool_schema(self) -> OpenAIFunctionToolSchema:
         return self.tool_schema
@@ -214,9 +222,9 @@ class ImageResizeTool(BaseTool):
         # Get image from kwargs
         images = kwargs.get("images")
         if images is None:
-            raise ValueError("Missing required 'image' parameter in kwargs")
+            raise ValueError("Missing required 'images' parameter in kwargs")
 
-        img = [fetch_image({"image": images[idx]}) for idx in range(len(images))]
+        img = [{"image": images[idx]} for idx in range(len(images))]
 
         self._instance_dict[instance_id] = {
             "image": img,
@@ -226,32 +234,40 @@ class ImageResizeTool(BaseTool):
         return instance_id, ToolResponse()
 
     async def execute(self, instance_id: str, parameters: dict[str, Any], **kwargs) -> tuple[ToolResponse, float, dict]:
-        timestamps = parameters.get("timestamps")
-
-        if not timestamps or len(timestamps) == 0:
-            return (
-                ToolResponse(text="Error: timestamps parameter is missing or not a list of integers."),
-                -0.05,
-                {"success": False},
-            )
-
-        if len(timestamps) > 4:
-            return (
-                ToolResponse(text="Error: Too many timestamps. Please select at most 4 timestamps."),
-                -0.05,
-                {"success": False},
-            )
-
         instance_data = self._instance_dict[instance_id]
         images = instance_data["image"]
 
+        timestamps = parameters.get("frame_indices")
+
+        if timestamps is None or not isinstance(timestamps, list) or len(timestamps) == 0:
+            return (
+                ToolResponse(text="Error: frame_indices parameter is missing or not a list of integers."),
+                -0.05,
+                {"success": False},
+            )
+
+        invalid = [t for t in timestamps if not isinstance(t, int) or t < 0 or t >= len(images)]
+        if invalid:
+            return (
+                ToolResponse(text=f"Error: frame_indices contains out-of-range indices: {invalid}. The valid range is [0, {len(images)-1}]."),
+                -0.05,
+                {"success": False},
+            )
+
+        if len(timestamps) > 5:
+            return (
+                ToolResponse(text="Error: Too many frame indices. Please select at most 5 frame indices."),
+                -0.05,
+                {"success": False},
+            )
+
         try:
-            selected_images = [images[idx] for idx in timestamps]
+            selected_images = [images[idx]["image"] for idx in timestamps]
         except Exception as e:
             logger.error(f"Error processing image resize: {e}")
             return ToolResponse(text=f"Error processing image resize: {e}"), -0.05, {"success": False}
 
-        response_text = f"Selected images at timestamps {timestamps}."
+        response_text = f"Selected images at frame indices {timestamps}."
 
         with open('/workspace/log/tool.log', 'a') as f:
             f.write(f'response_text: {response_text}\n')
@@ -259,7 +275,7 @@ class ImageResizeTool(BaseTool):
 
         return (
             ToolResponse(
-                image=selected_images[0:1],
+                image=selected_images,
                 text=response_text,
             ),
             0.0,
