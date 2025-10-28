@@ -38,6 +38,7 @@ class FunctionCall(BaseModel):
     name: str
     """The name of the function to call."""
 
+    raw_text: str | None = None
 
 class ToolParser(ABC):
     _registry: dict[str, type["ToolParser"]] = {}
@@ -96,7 +97,7 @@ class HermesToolParser(ToolParser):
             try:
                 function_call = json.loads(match)
                 name, arguments = function_call["name"], function_call["arguments"]
-                function_calls.append(FunctionCall(name=name, arguments=json.dumps(arguments, ensure_ascii=False)))
+                function_calls.append(FunctionCall(name=name, arguments=json.dumps(arguments, ensure_ascii=False), raw_text=text))
             except Exception as e:
                 logger.error(f"Failed to decode tool call: {e}")
 

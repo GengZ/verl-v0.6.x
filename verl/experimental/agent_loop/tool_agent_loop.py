@@ -259,6 +259,7 @@ class ToolAgentLoop(AgentLoopBase):
         """Handle the processing tools state: execute tool calls and prepare tool responses."""
         add_messages: list[dict[str, Any]] = []
         new_images_this_turn: list[Any] = []  # Local variable instead of agent_data attribute
+        staged_tool_rewards: list[float] = []
 
         tasks = []
         for tool_call in agent_data.tool_calls[: self.max_parallel_calls]:
@@ -267,8 +268,7 @@ class ToolAgentLoop(AgentLoopBase):
         with simple_timer("tool_calls", agent_data.metrics):
             responses = await asyncio.gather(*tasks)
 
-        # Process tool responses and update multi_modal_data
-        # Removed: agent_data.new_images_this_turn = []
+        # Process tool responses (stage only; do not mutate agent_data yet)
         for tool_response, tool_reward, _ in responses:
             # Create message from tool response
             if tool_response.image or tool_response.video:
@@ -281,7 +281,6 @@ class ToolAgentLoop(AgentLoopBase):
                     )
                 content = []
                 if tool_response.image:
-                    # content.append({"type": "image"})
                     content.extend([{"type": "image"} for _ in tool_response.image])
                 if tool_response.video:
                     content.append({"type": "video"})
@@ -293,40 +292,29 @@ class ToolAgentLoop(AgentLoopBase):
                 message = {"role": "tool", "content": tool_response.text or ""}
 
             add_messages.append(message)
-            agent_data.messages.extend(add_messages)
 
-            # Handle image data
+            # Stage image data only
             if tool_response.image:
-                if agent_data.image_data is None:
-                    agent_data.image_data = []
-                elif not isinstance(agent_data.image_data, list):
-                    agent_data.image_data = [agent_data.image_data]
-
-                # Add new image data
                 if isinstance(tool_response.image, list):
-                    # Ensure all elements in the list are valid image objects
                     for img in tool_response.image:
-                        if img is not None:  # Add a check to ensure the image is not None
-                            agent_data.image_data.append(img)
-                            new_images_this_turn.append(img)  # Using local variable
+                        if img is not None:
+                            new_images_this_turn.append(img)
                 else:
-                    # Ensure the image is not None
                     if tool_response.image is not None:
-                        agent_data.image_data.append(tool_response.image)
-                        new_images_this_turn.append(tool_response.image)  # Using local variable
+                        new_images_this_turn.append(tool_response.image)
 
-            # Handle video data
+            # Video not supported
             if tool_response.video:
-                # Currently not supported, raise informative error
                 logger.warning("Multimedia type 'video' is not currently supported. Only 'image' is supported.")
                 raise NotImplementedError(
                     "Multimedia type 'video' is not currently supported. Only 'image' is supported."
                 )
 
+            # Stage rewards
             if tool_reward is not None:
-                agent_data.tool_rewards.append(tool_reward)
+                staged_tool_rewards.append(tool_reward)
 
-        # Update prompt with tool responses
+        # Update prompt with tool responses (tokenize from staged messages/images)
         if self.processor is not None:
             raw_tool_response = await self.loop.run_in_executor(
                 None,
@@ -347,8 +335,25 @@ class ToolAgentLoop(AgentLoopBase):
                 lambda: self.tokenizer.apply_chat_template(add_messages, add_generation_prompt=True, tokenize=True),
             )
         response_ids = response_ids[len(self.system_prompt) :]
+
+        # Length check BEFORE committing any staged state
         if len(agent_data.response_mask) + len(response_ids) >= self.response_length:
             return AgentState.TERMINATED
+
+        # Commit staged messages/images/rewards and token updates together
+        if add_messages:
+            agent_data.messages.extend(add_messages)
+
+        if new_images_this_turn:
+            if agent_data.image_data is None:
+                agent_data.image_data = []
+            elif not isinstance(agent_data.image_data, list):
+                agent_data.image_data = [agent_data.image_data]
+            agent_data.image_data.extend(new_images_this_turn)
+
+        if staged_tool_rewards:
+            agent_data.tool_rewards.extend(staged_tool_rewards)
+
         # Update prompt_ids and response_mask
         agent_data.prompt_ids += response_ids
         agent_data.response_mask += [0] * len(response_ids)
@@ -417,6 +422,18 @@ class ToolAgentLoop(AgentLoopBase):
             # TODO: append malformed tool_call to the prompt: invalid function name or arguments
             tool_name = tool_call.name
             tool_args = json.loads(tool_call.arguments)
+
+            # Inject full-turn assistant text for this tool call
+            # _agent_raw_text: includes tool call tags/tokens if any
+            # _agent_content: tool-call tags removed (assistant-visible content)
+            if isinstance(tool_args, dict):
+                raw_text = getattr(tool_call, "raw_text", None)
+                content = getattr(tool_call, "content", None)
+                if raw_text is not None:
+                    tool_args["_agent_raw_text"] = raw_text
+                if content is not None:
+                    tool_args["_agent_content"] = content
+
             tool = self.tools[tool_name]
             kwargs = tools_kwargs.get(tool_name, {})
             instance_id, _ = await tool.create(create_kwargs=kwargs.get("create_kwargs", {}))

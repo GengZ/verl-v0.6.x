@@ -67,6 +67,12 @@ class BatchRewardManager(AbstractRewardManager):
         for i in range(len(data)):
             extras[i]["rollout_reward_scores"] = rollout_reward_scores[i]
 
+        # update with tool rewards
+        tool_rewards_arr = data.non_tensor_batch.get("tool_rewards", None)
+        if tool_rewards_arr is not None:
+            for i in range(len(data)):
+                extras[i]["tool_rewards"] = tool_rewards_arr[i]
+
         scores = self.compute_score(
             data_sources=data_sources,
             solution_strs=responses_str,

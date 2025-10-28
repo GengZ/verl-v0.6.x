@@ -307,27 +307,13 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
         # acc_reward = 1.0
         pass
 
-    # 5. Check tool usage - look for tool_call/tool_response patterns instead of vision tokens
-    has_tool_usage = bool(
-        re.search(r"<tool_call>.*?</tool_call>", solution_str, re.DOTALL)
-        or re.search(r"<tool_response>.*?</tool_response>", solution_str, re.DOTALL)
-    )
-
-    # Tool reward: only give if tools were used AND answer is correct
-    tool_reward = 1.0 if has_tool_usage and acc_reward > 0.5 else 0.0
+    # # 5. Check tool usage - look for tool_call/tool_response patterns instead of vision tokens
+    tool_rewards = extra_info.get("tool_rewards", [0.0])
+    nums = [float(x) for x in tool_rewards if isinstance(x, (int, float))]
+    tool_reward = float(sum(nums) / len(nums)) if nums else 0.0
 
     # Format reward: penalty for format errors
     format_reward = -1.0 if is_format_error else 0.0
-
-    # Log debug information for problematic cases
-    if is_format_error or not answer_text:
-        logger.debug(
-            f"Format issue detected:\n"
-            f"Solution: {solution_str[:200]}...\n"
-            f"Extracted answer: '{answer_text}'\n"
-            f"Format error: {is_format_error}\n"
-            f"Tool usage: {has_tool_usage}"
-        )
 
     # Final weighted score
     final_score = 0.8 * acc_reward + 0.2 * format_reward + 1.2 * tool_reward
