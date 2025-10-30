@@ -236,6 +236,8 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
     # Initialize tracking variables
     is_format_error = False
 
+    solution_str = solution_str.split("assistant")[-1]
+
     # 1. Check <think> tag format
     count_think_1 = solution_str.count("<think>")
     count_think_2 = solution_str.count("</think>")
@@ -250,7 +252,7 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
 
     # Strategy 1: Try to extract from <answer> tags first
     predict_no_think = (
-        solution_str.split("</think>")[-1].strip() if "</think>" in solution_str else solution_str.strip()
+        solution_str.split("</think>")[1].strip() if "</think>" in solution_str else solution_str.strip()
     )
 
     # Check <answer> tag format
@@ -264,32 +266,34 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
     if answer_match:
         answer_text = answer_match.group(1).strip()
     else:
-        # No proper <answer> tags found - this is a format error
-        is_format_error = True
+        answer_text = predict_no_think.strip()
+    # else:
+    #     # No proper <answer> tags found - this is a format error
+    #     is_format_error = True
 
-        # Strategy 2: If no <answer> tags, extract content after tool responses
-        # Look for pattern: <tool_response>...</tool_response>assistant\n[actual_answer]
-        tool_response_match = re.search(
-            r"</tool_response>\s*assistant\s*\n(.*?)$", predict_no_think, re.DOTALL | re.MULTILINE
-        )
-        if tool_response_match:
-            answer_text = tool_response_match.group(1).strip()
-        else:
-            # Strategy 3: If no tool responses, look for content after </think>
-            if "</think>" in solution_str:
-                # Remove any remaining tool-related tags and extract meaningful content
-                remaining_content = predict_no_think
-                # Remove tool calls and responses
-                remaining_content = re.sub(r"<tool_call>.*?</tool_call>", "", remaining_content, flags=re.DOTALL)
-                remaining_content = re.sub(
-                    r"<tool_response>.*?</tool_response>", "", remaining_content, flags=re.DOTALL
-                )
-                # Remove user/assistant markers
-                remaining_content = re.sub(r"\b(user|assistant)\b", "", remaining_content)
-                answer_text = remaining_content.strip()
-            else:
-                # Strategy 4: Use the entire solution_str as fallback
-                answer_text = solution_str.strip()
+    #     # Strategy 2: If no <answer> tags, extract content after tool responses
+    #     # Look for pattern: <tool_response>...</tool_response>assistant\n[actual_answer]
+    #     tool_response_match = re.search(
+    #         r"</tool_response>\s*assistant\s*\n(.*?)$", predict_no_think, re.DOTALL | re.MULTILINE
+    #     )
+    #     if tool_response_match:
+    #         answer_text = tool_response_match.group(1).strip()
+    #     else:
+    #         # Strategy 3: If no tool responses, look for content after </think>
+    #         if "</think>" in solution_str:
+    #             # Remove any remaining tool-related tags and extract meaningful content
+    #             remaining_content = predict_no_think
+    #             # Remove tool calls and responses
+    #             remaining_content = re.sub(r"<tool_call>.*?</tool_call>", "", remaining_content, flags=re.DOTALL)
+    #             remaining_content = re.sub(
+    #                 r"<tool_response>.*?</tool_response>", "", remaining_content, flags=re.DOTALL
+    #             )
+    #             # Remove user/assistant markers
+    #             remaining_content = re.sub(r"\b(user|assistant)\b", "", remaining_content)
+    #             answer_text = remaining_content.strip()
+    #         else:
+    #             # Strategy 4: Use the entire solution_str as fallback
+    #             answer_text = solution_str.strip()
 
     # Clean up answer text
     answer_text = answer_text.strip()
@@ -316,7 +320,7 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
     format_reward = -1.0 if is_format_error else 0.0
 
     # Final weighted score
-    final_score = 0.8 * acc_reward + 0.2 * format_reward + 1.2 * tool_reward
+    final_score = 0.8 * acc_reward + 0.2 * format_reward + 1.2 * (tool_reward * int(acc_reward > 0.5))
 
     return final_score
 

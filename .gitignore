@@ -1,4 +1,6 @@
+pretrained/
 tensorboard_log/
+inference/results/
 
 **/*.pt
 **/checkpoints

@@ -3,9 +3,13 @@
 set -x
 
 export HYDRA_FULL_ERROR=1
+export VERL_LOGGING_LEVEL=DEBUG
+
 
 PROJECT_NAME="vqa_scanqa_images_multiturn_multi_choice"
-EXPERIMENT_NAME="debug"
+# EXPERIMENT_NAME="local_reward_0"
+EXPERIMENT_NAME="local_reward_1_pretrained_3"
+# EXPERIMENT_NAME="debug"
 
 BASEDIR=/workspace/git/verl_0.6
 SAVE_CHECKPOINT_DIR=${BASEDIR}/checkpoints
@@ -13,7 +17,10 @@ SAVE_CHECKPOINT_DIR=${BASEDIR}/checkpoints
 DATASET_TRAIN=/workspace/data/verl/scanqa_images_64_336x224_672x448_multiturn_format_update_1/train.parquet
 DATASET_VAL=/workspace/data/verl/scanqa_images_64_336x224_672x448_multiturn_format_update_1/test.parquet
 
-REF_MODEL_PATH=Qwen/Qwen2.5-VL-3B-Instruct
+# REF_MODEL_PATH=Qwen/Qwen2.5-VL-3B-Instruct
+# REF_MODEL_PATH=pretrained/scannet_multiframe_qwen_chkpt_0/scanqa_qwen_cot_verl_0
+# REF_MODEL_PATH=pretrained/scannet_multiframe_qwen_chkpt_0_rerun/scanqa_qwen_cot_verl_2
+REF_MODEL_PATH=pretrained/scannet_multiframe_qwen_chkpt_0_rererun/scanqa_qwen_cot_verl_3
 
 PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     --config-path=${BASEDIR}/recipe/scanqa_multiturn_multi_choice/configs \
@@ -21,8 +28,8 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     data.train_files=${DATASET_TRAIN} \
     data.val_files=[${DATASET_VAL}] \
     data.train_batch_size=8 \
-    data.max_prompt_length=10240 \
-    data.max_response_length=10240 \
+    data.max_prompt_length=16384 \
+    data.max_response_length=16384 \
     data.return_raw_chat=True \
     data.filter_overlong_prompts=False \
     algorithm.adv_estimator=grpo \
@@ -54,8 +61,8 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     actor_rollout_ref.rollout.multi_turn.enable=True \
-    actor_rollout_ref.rollout.multi_turn.max_assistant_turns=3 \
-    actor_rollout_ref.rollout.multi_turn.max_user_turns=3 \
+    actor_rollout_ref.rollout.multi_turn.max_assistant_turns=2 \
+    actor_rollout_ref.rollout.multi_turn.max_user_turns=2 \
     actor_rollout_ref.rollout.multi_turn.max_parallel_calls=1 \
     actor_rollout_ref.rollout.multi_turn.tool_config_path=recipe/scanqa_multiturn_multi_choice/configs/image_resize_tool_config.yaml \
     trainer.critic_warmup=0 \
@@ -63,14 +70,14 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=False \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \
-    trainer.save_freq=80 \
-    trainer.test_freq=80 \
+    trainer.save_freq=25 \
+    trainer.test_freq=-1 \
     trainer.project_name=${PROJECT_NAME} \
     trainer.experiment_name=${EXPERIMENT_NAME} \
     trainer.default_local_dir=${SAVE_CHECKPOINT_DIR}/${PROJECT_NAME}/${EXPERIMENT_NAME} \
     +trainer.tensorboard_dir=${SAVE_CHECKPOINT_DIR}/logs/tensorboard \
     +trainer.rl_logging_board_dir=${SAVE_CHECKPOINT_DIR}/logs/rl_logging_board \
-    trainer.rollout_data_dir=/workspace/experiments/verl/rollout/scanqa_multiturn_multi_choice/debug \
+    trainer.rollout_data_dir=/workspace/experiments/verl/rollout/scanqa_multiturn_multi_choice/custom_checkpoint_rerun_reward_1 \
     trainer.total_epochs=1 2>&1 | tee ./logs/${EXPERIMENT_NAME}.log
 
     # actor_rollout_ref.rollout.multi_turn.tool_config_path=recipe/debug/configs/image_zoom_in_tool_config.yaml \
