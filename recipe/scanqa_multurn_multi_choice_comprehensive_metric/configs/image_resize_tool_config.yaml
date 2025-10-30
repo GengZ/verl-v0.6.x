@@ -1,0 +1,23 @@
+tools:
+  - class_name: "verl.tools.image_resize_tool.ImageResizeTool"
+    config:
+      num_workers: 256
+      rate_limit: 256
+      timeout: 60
+      type: native
+    tool_schema:
+      type: "function"
+      function:
+        name: "image_resize_tool"
+        description: "Enlarge specific video frames by resizing them based on the frame indices."
+        parameters:
+          type: "object"  
+          properties:
+            frame_indices:
+              type: "array"
+              items:
+                type: "integer"
+              minItems: 1
+              maxItems: 5
+              description: "Frame indices of the frames to scale up."
+          required: ["frame_indices"]
