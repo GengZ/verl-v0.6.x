@@ -53,6 +53,7 @@ def _resize_keep_aspect(img: Image.Image, *, scale: Optional[float] = None, targ
 def run_temporal_zoom_tool_from_parsed_call(
     tool_call: Dict[str, Any],
     source_images: List[Any],
+    images_in_first_turn: List[Any],
     *,
     scale: Optional[float] = None,
     target_long_side: Optional[int] = None,
@@ -88,8 +89,18 @@ def run_temporal_zoom_tool_from_parsed_call(
         imgs = []
 
     resized: List[Image.Image] = []
+
+    image_start = images_in_first_turn[idx]
+    image_end = images_in_first_turn[idx+1]
+    image_start = _coerce_images(image_start)
+    image_end = _coerce_images(image_end)
+
+    resized.append(_resize_keep_aspect(image_start, scale=scale, target_long_side=target_long_side))
+
     for idx in range(len(imgs)):
         resized.append(_resize_keep_aspect(imgs[idx], scale=scale, target_long_side=target_long_side))
+
+    resized.append(_resize_keep_aspect(image_end, scale=scale, target_long_side=target_long_side))
 
     content = [{"type": "image"} for _ in resized]
     content.append({"type": "text", "text": f"Zoomed in on the frames between Frame-{idx} and Frame-{idx+1}."})

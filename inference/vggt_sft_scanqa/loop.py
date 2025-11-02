@@ -259,7 +259,7 @@ def run_qwen_vl(
                 name = tc.get("name")
                 if name in {"temporal_zoom_tool"}:
                     # Use simple local tool executor that returns PIL images + tool message
-                    resized_images, tool_message = run_temporal_zoom_tool_from_parsed_call(tc, high_resolution_images)
+                    resized_images, tool_message = run_temporal_zoom_tool_from_parsed_call(tc, high_resolution_images, images)
                     messages.append(tool_message)
                     images.extend(resized_images)
                 else:
