@@ -280,6 +280,17 @@ class TemporalZoomTool(BaseTool):
 
         # raw_text = parameters.get("_agent_raw_text")
         # tool_reward = compute_tool_reward(raw_text)
+        
+        if isinstance(interval_index, str):
+            try:
+                interval_index = int(interval_index)
+            except Exception as e:
+                logger.error(f"Error converting interval_index to integer: {e}")
+                return (
+                    ToolResponse(text=f"Error: interval_index is not an integer: {interval_index}."),
+                    -0.05,
+                    {"success": False},
+                )
 
         if interval_index is None or not isinstance(interval_index, int):
             return (
@@ -319,7 +330,7 @@ class TemporalZoomTool(BaseTool):
                 image=selected_images,
                 text=response_text,
             ),
-            0.0,
+            1.0,
             {"success": True},
         )
 

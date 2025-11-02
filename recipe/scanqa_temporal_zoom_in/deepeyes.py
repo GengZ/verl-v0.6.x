@@ -83,11 +83,17 @@ class CustomRLHFDataset(RLHFDataset):
         """
         Note that we also return the raw_input_ids so that it can be combined with other chat template
         """
+        prev_tool_name = "image_resize_tool"
+        current_tool_name = "temporal_zoom_tool"
+
+        prev_format_requirement = "Format strictly as <think>...</think><tool_call>...</tool_call>(if tools needed)<answer>...</answer>."
+        current_format_requirement = "For the final answer, format strictly as <think>...</think><answer>...</answer>."
+
         row_dict: dict = self.dataframe[item]
         row_dict[self.prompt_key] = [
             {
                 "role": "user",
-                "content": row_dict[self.prompt_key][0]["content"].replace("image_resize_tool", "temporal_zoom_tool"),
+                "content": row_dict[self.prompt_key][0]["content"].replace(prev_tool_name, current_tool_name).replace(prev_format_requirement, current_format_requirement),
             },
         ]
         messages = self._build_messages(row_dict)
@@ -280,7 +286,10 @@ def compute_score(data_source: str, solution_str: str, ground_truth: str, extra_
         and re.search(r"<tool_response>.*?</tool_response>", raw_solution_str, re.DOTALL)
     )
 
-    tool_reward = 1.0 if has_tool_usage and acc_reward > 0.5 else 0.0
+    tool_rewards = extra_info.get("tool_rewards", [0.0])
+    nums = [float(x) for x in tool_rewards if isinstance(x, (int, float))]
+    tool_reward = float(sum(nums) / len(nums)) if nums else 0.0
+    tool_reward = tool_reward * int(acc_reward > 0.5)
 
     # Format reward: penalty for format errors
     format_reward = -1.0 if is_format_error else 0.0
