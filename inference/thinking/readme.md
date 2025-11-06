@@ -47,6 +47,9 @@ This folder contains a two-stage pipeline for multimodal “thinking” on video
     - `Config`: paths, model id, generation params, and parallelism (GPU IDs, processes per GPU).
     - Spawns workers, each loading the model + dataset once, processes a shard of `reasoning.jsonl`, writes `answer.jsonl.rank{N}.jsonl`, merges into `outputs/answer.jsonl`, and keeps `.errors` logs if any.
 
+### Stage 3 - Generate thinking data for SFT
+https://github.com/GengZ/LLaMA-Factory/blob/qwen-scanqa/data/scanqa/prepare_data_thinking.py
+
 ### Prompt parsing utilities
 - `extract_think.py`
   - `extract_last_think(text)`: Pulls the last `<think>...</think>` block.
