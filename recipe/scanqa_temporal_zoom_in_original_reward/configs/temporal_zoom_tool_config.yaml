@@ -1,0 +1,21 @@
+tools:
+  - class_name: "verl.tools.temporal_zoom_tool.TemporalZoomTool"
+    config:
+      num_workers: 256
+      rate_limit: 256
+      timeout: 60
+      type: native
+    tool_schema:
+      type: "function"
+      function:
+        name: "temporal_zoom_tool"
+        description: "Choose an interval index (between frame N and frame N+1) and uniformly sample additional frames within that interval to provide finer temporal detail for reasoning."
+        parameters:
+          type: "object"
+          properties:
+            interval_index:
+              type: "integer"
+              minimum: 0
+              maximum: 14
+              description: "Index N of the interval between frame N and frame N+1."
+          required: ["interval_index"]

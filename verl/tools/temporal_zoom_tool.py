@@ -221,7 +221,7 @@ class TemporalZoomTool(BaseTool):
             rate_limit=self.rate_limit,
             mode=PoolMode.ThreadMode,
         )
-        logger.info(f"Initialized ImageResizeTool with config: {config}")
+        logger.info(f"Initialized TemporalZoomTool with config: {config}")
 
     def get_openai_tool_schema(self) -> OpenAIFunctionToolSchema:
         return self.tool_schema
